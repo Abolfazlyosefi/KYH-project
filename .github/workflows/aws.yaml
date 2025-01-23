@@ -1,0 +1,40 @@
+name: Build and push to AWS
+
+on:
+  push:
+    branches:
+      - main  # Mellanslag behövs före "- main"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Det ska vara "runs-on" istället för "runs on"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0'  # Rätt indrag behövs här
+
+      - name: Build project
+        run: |
+          dotnet restore
+          dotnet publish -o site
+
+      - name: Create zip package
+        run: |
+          cd site
+          zip -r ../site.zip .
+
+      - name: Deploy to AWS Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v21
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}  # Mellanslag behövs innan }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} 
+          application_name: "Calculator API"  # Dubbelcitationstecken krävs om det innehåller mellanslag
+          environment_name: "CalculatorAPI-env"  # Stavfel korrigerat från "enviroment_name" till "environment_name"
+          version_label: ${{ github.run_id }}
+          region: eu-north-1
+          deployment_package: site.zip
